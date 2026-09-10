@@ -197,7 +197,7 @@ func _ready() -> void:
 	_api.import_error.connect(_on_import_error)
 
 	UpdateChecker.update_available.connect(_on_update_available)
-	UpdateChecker.check_failed.connect(func(reason: String): print("[UpdateChecker] ", reason))
+	UpdateChecker.check_failed.connect(_on_update_check_failed)
 	UpdateChecker.check_now()
 
 	_live_poll_timer = Timer.new()
@@ -337,7 +337,22 @@ func _build_version_footer() -> void:
 func _on_update_available(version: String, _download_url: String) -> void:
 	_update_btn.text = "⬆ Update to v%s" % version
 	_update_btn.visible = true
+	_update_btn.disabled = false
 	_update_btn.tooltip_text = "Download and install the new version — the app will close and restart automatically."
+
+# Also fires for the background "is there an update" check (harmless to
+# ignore there, nothing is shown to the user yet), and for a failed
+# download_and_install() — which used to only print to a console nobody
+# sees on an exported build, so a failure (e.g. the installer transiently
+# locked by an antivirus scan right after download) looked exactly like the
+# button silently doing nothing. Surface it on the button whenever we were
+# actually mid-update.
+func _on_update_check_failed(reason: String) -> void:
+	print("[UpdateChecker] ", reason)
+	if _update_btn.text == "Downloading update...":
+		_update_btn.disabled = false
+		_update_btn.text = "⬆ Update failed — retry?"
+		_update_btn.tooltip_text = reason
 
 func _on_update_btn_pressed() -> void:
 	var confirm := ConfirmationDialog.new()

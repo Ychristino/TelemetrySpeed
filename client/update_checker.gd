@@ -100,7 +100,24 @@ func download_and_install() -> void:
 		f.store_buffer(body)
 		f.close()
 		dl.queue_free()
-		OS.create_process(path, ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], false)
-		get_tree().quit()
+		_launch_installer(path)
 	)
 	dl.request(_latest_download_url)
+
+# A freshly-written .exe can be transiently locked for a moment by Windows
+# Defender's on-write scan, which makes CreateProcess fail right after we
+# finish writing a large downloaded binary. create_process's return value
+# was never checked before, so that failure was silent: the app just quit
+# anyway with no installer running and nothing to show for it — exactly what
+# an update that "does nothing" looks like. Retry a few times before giving
+# up, and only quit once the installer actually launched.
+func _launch_installer(path: String, attempt: int = 1) -> void:
+	var pid := OS.create_process(path, ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], false)
+	if pid > 0:
+		EngineProcess.shutdown_and_quit()
+		return
+	if attempt >= 5:
+		check_failed.emit("could not launch installer after %d attempts" % attempt)
+		return
+	await get_tree().create_timer(0.5).timeout
+	_launch_installer(path, attempt + 1)

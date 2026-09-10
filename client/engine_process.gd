@@ -65,10 +65,18 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if _shutting_down:
-			return
-		_shutting_down = true
-		_begin_shutdown()
+		shutdown_and_quit()
+
+
+# Public entry point for anything that needs this process (and the engine.exe
+# + Postgres it owns) torn down gracefully before the app exits — e.g. the
+# in-app auto-updater, which used to call get_tree().quit() directly and skip
+# this, leaving engine.exe/postgres.exe orphaned every time someone updated.
+func shutdown_and_quit() -> void:
+	if _shutting_down:
+		return
+	_shutting_down = true
+	_begin_shutdown()
 
 
 # ---------------------------------------------------------------- launching
