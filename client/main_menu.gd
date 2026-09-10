@@ -95,6 +95,9 @@ var _capture_port_edit: LineEdit
 var _capture_play_btn: Button
 var _capture_status_label: Label
 
+# --- Update notice (top bar) ---
+var _update_btn: Button
+
 # --- Export / Import modal ---
 var _export_modal: Window
 var _export_scope := "all"  # "all" | "track" | "lap"
@@ -192,6 +195,10 @@ func _ready() -> void:
 	_api.import_result_received.connect(_on_import_result_received)
 	_api.import_error.connect(_on_import_error)
 
+	UpdateChecker.update_available.connect(_on_update_available)
+	UpdateChecker.check_failed.connect(func(reason: String): print("[UpdateChecker] ", reason))
+	UpdateChecker.check_now()
+
 	_live_poll_timer = Timer.new()
 	_live_poll_timer.wait_time = 2.0
 	_live_poll_timer.timeout.connect(func():
@@ -267,6 +274,11 @@ func _build_topbar_extras() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_top_menu.add_child(spacer)
 
+	_update_btn = Button.new()
+	_update_btn.visible = false
+	_update_btn.pressed.connect(_on_update_btn_pressed)
+	_top_menu.add_child(_update_btn)
+
 	_capture_dot = Label.new()
 	_capture_dot.text = "●"
 	_capture_dot.add_theme_font_size_override("font_size", 16)
@@ -281,6 +293,25 @@ func _build_topbar_extras() -> void:
 
 	_build_capture_modal()
 	_build_export_modal()
+
+# ── Update notice ────────────────────────────────────────────────────────────
+
+func _on_update_available(version: String, _download_url: String) -> void:
+	_update_btn.text = "⬆ Update to v%s" % version
+	_update_btn.visible = true
+	_update_btn.tooltip_text = "Download and install the new version — the app will close and restart automatically."
+
+func _on_update_btn_pressed() -> void:
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "Update Available"
+	confirm.dialog_text = "%s\n\nThe app will close, install the update, and you'll need to reopen it." % _update_btn.text.trim_prefix("⬆ ")
+	confirm.confirmed.connect(func():
+		_update_btn.disabled = true
+		_update_btn.text = "Downloading update..."
+		UpdateChecker.download_and_install()
+	)
+	add_child(confirm)
+	confirm.popup_centered()
 
 # The modal where the UDP port is set and capture is started/stopped —
 # opened from the "Capture" button; the top bar itself only shows the dot.

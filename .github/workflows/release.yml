@@ -1,0 +1,102 @@
+name: Release
+
+# Push a tag like "v1.2.3" to trigger a full build: Go engine, Godot client
+# export, bundled Postgres binaries, packaged into one Inno Setup installer
+# and attached to a GitHub Release for that tag. See installer/TelemetrySpeed.iss
+# and engine/cmd/engine's postgresBinariesPath for why the Postgres binaries
+# are bundled rather than downloaded by the end user.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # to create the Release and upload the installer asset
+
+env:
+  GODOT_VERSION: "4.6.1-stable"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+
+      # Must exist before anything is written under client/dist/, and
+      # before the Godot export step runs — dist/ isn't itself a git-tracked
+      # directory (see root .gitignore) so this marker never survives a
+      # checkout on its own. Without it, Godot's exporter scans engine.exe
+      # and the ~100MB of bundled Postgres binaries as project resources:
+      # some fail to import outright, and the ones that don't get needlessly
+      # embedded into the exported .pck, bloating TelemetryView.exe by
+      # dozens of MB for no reason (found and fixed once already, by hand,
+      # during local testing — see git history around the icon/bundling work).
+      - name: Mark client/dist as ignored by Godot's resource scanner
+        shell: bash
+        run: |
+          mkdir -p client/dist
+          touch client/dist/.gdignore
+
+      - name: Build engine.exe
+        working-directory: engine
+        run: go build -o ../client/dist/engine.exe ./cmd/engine
+
+      - name: Bundle Postgres binaries (offline first-launch)
+        working-directory: engine
+        run: go run ./scripts/bootstrap-pgbin --out ../client/dist/pgbin
+
+      - name: Write client/version.txt from tag
+        shell: bash
+        run: echo "${{ steps.version.outputs.version }}" > client/version.txt
+
+      - name: Download Godot
+        shell: pwsh
+        run: |
+          # The release asset is "..._win64.exe.zip" — it contains both the
+          # windowed and _console executables; we run the console one so
+          # --headless output actually reaches the workflow log.
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION/Godot_v$($env:GODOT_VERSION)_win64.exe.zip" -OutFile godot.zip
+          Expand-Archive -Path godot.zip -DestinationPath godot-bin
+
+      - name: Download Godot export templates
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION/Godot_v$($env:GODOT_VERSION)_export_templates.tpz" -OutFile templates.tpz
+          # Godot's own template lookup uses dots throughout (e.g.
+          # "4.6.1.stable"), not the hyphenated release-tag form used for
+          # download URLs ("4.6.1-stable") — confirmed against a working
+          # local install's actual export_templates folder name.
+          $templateDirName = $env:GODOT_VERSION -replace '-', '.'
+          $dest = "$env:APPDATA\Godot\export_templates\$templateDirName"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Path templates.tpz -DestinationPath templates-extract
+          # The .tpz unzips into a "templates/" folder; Godot expects its
+          # contents directly under export_templates/<version>/.
+          Copy-Item -Path "templates-extract\templates\*" -Destination $dest -Recurse -Force
+
+      - name: Export Godot client (Windows Desktop)
+        shell: pwsh
+        run: |
+          & ".\godot-bin\Godot_v$($env:GODOT_VERSION)_win64_console.exe" --headless --path client --export-release "Windows Desktop" dist/TelemetryView.exe
+
+      - name: Build installer with Inno Setup
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.version.outputs.version }} installer\TelemetrySpeed.iss
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer-output/TelemetrySpeedSetup.exe
+          generate_release_notes: true

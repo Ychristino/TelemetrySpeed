@@ -26,6 +26,7 @@ window/stretch/aspect="expand"
 [autoload]
 
 EngineProcess="*res://engine_process.gd"
+UpdateChecker="*res://update_checker.gd"
 
 [physics]
 
