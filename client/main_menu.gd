@@ -304,7 +304,7 @@ func _build_topbar_extras() -> void:
 	_top_menu.add_child(dot_box)
 
 	var capture_btn := Button.new()
-	capture_btn.text = "Capture"
+	capture_btn.text = "Capture Live"
 	capture_btn.pressed.connect(func(): _capture_modal.popup_centered())
 	_top_menu.add_child(capture_btn)
 
