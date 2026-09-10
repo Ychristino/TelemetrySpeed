@@ -53,7 +53,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"
 
 [Files]
-Source: "..\client\dist\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+; ignoreversion: TelemetryView.exe's embedded Win32 file-version resource is
+; hardcoded to 1.0.0.0 for every build (export_presets.cfg isn't wired to our
+; version.txt/git tag), so it's identical across releases. Without this flag,
+; Inno compares that version resource and silently skips reinstalling the
+; file ("Same version. Skipping."), which is why silent auto-updates kept
+; leaving the old TelemetryView.exe in place while engine.exe/DLLs (no
+; version resource, so no such comparison) updated fine.
+Source: "..\client\dist\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
