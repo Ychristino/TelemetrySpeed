@@ -308,17 +308,29 @@ func _build_topbar_extras() -> void:
 	capture_btn.pressed.connect(func(): _capture_modal.popup_centered())
 	_top_menu.add_child(capture_btn)
 
-	# Always visible — otherwise there's no way to confirm which build is
-	# actually running (came up debugging why the update button kept
-	# offering "v0.1.0" with no visible confirmation either way).
-	var version_label := Label.new()
-	version_label.text = "v" + UpdateChecker.current_version
-	version_label.modulate = Color(1, 1, 1, 0.35)
-	version_label.add_theme_font_size_override("font_size", 10)
-	_top_menu.add_child(version_label)
-
+	_build_version_footer()
 	_build_capture_modal()
 	_build_export_modal()
+
+# Bottom-right corner tag, always visible — otherwise there's no way to
+# confirm which build is actually running (came up debugging why the update
+# button kept offering "v0.1.0" with no visible confirmation either way).
+# Anchored directly on the root Control rather than living in any layout
+# container, so it floats in the corner independent of top-bar contents.
+func _build_version_footer() -> void:
+	var footer := Label.new()
+	footer.text = "v" + UpdateChecker.current_version
+	footer.modulate = Color(1, 1, 1, 0.35)
+	footer.add_theme_font_size_override("font_size", 10)
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	footer.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	footer.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	footer.offset_left -= 8
+	footer.offset_top -= 6
+	footer.offset_right -= 8
+	footer.offset_bottom -= 6
+	add_child(footer)
 
 # ── Update notice ────────────────────────────────────────────────────────────
 
