@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://007c3puxtjx4"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0vqpf"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="SelectedDriverItem" type="HBoxContainer" unique_id=2100505996]
+layout_mode = 3
+size_flags_horizontal = 3
+
+[node name="color_selection" type="ColorPickerButton" parent="." unique_id=1392773475]
+custom_minimum_size = Vector2(13, 13)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_styles/normal = SubResource("StyleBoxFlat_0vqpf")
+
+[node name="driver_name" type="Label" parent="." unique_id=221200198]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+vertical_alignment = 1
+text = "Driver Name"

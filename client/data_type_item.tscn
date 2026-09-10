@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://dg2ksncetvqus"]
+
+[ext_resource type="PackedScene" uid="uid://007c3puxtjx4" path="res://selected_driver_item.tscn" id="1_dh5ch"]
+
+[node name="DataTypeItem" type="Control" unique_id=1369790286]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=774149193]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="Label" type="Label" parent="VBoxContainer" unique_id=1942891387]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+text = "Data Type"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer" unique_id=1259903393]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SelectedDriverItem" parent="VBoxContainer/VBoxContainer" unique_id=337001074 instance=ExtResource("1_dh5ch")]
+layout_mode = 2

@@ -1,0 +1,82 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://ui_icon_button.gd" id="1_icon"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_0vqpf"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(1, 1, 1, 0.045)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="DriverListItem" type="PanelContainer" unique_id=317460882]
+layout_mode = 3
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="col" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="row" type="HBoxContainer" parent="col"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="visibility_toggle" type="Button" parent="col/row" unique_id=964720135]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 1
+toggle_mode = true
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_0vqpf")
+script = ExtResource("1_icon")
+icon_name = "eye"
+
+[node name="driver_name" type="Label" parent="col/row" unique_id=451092687]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_override_font_sizes/font_size = 11
+text_overrun_behavior = 3
+clip_text = true
+vertical_alignment = 1
+text = "Driver Name"
+
+[node name="name_spacer" type="Control" parent="col/row"]
+custom_minimum_size = Vector2(14, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+mouse_filter = 2
+
+[node name="reference_toggle" type="Button" parent="col" unique_id=628317095]
+layout_mode = 2
+toggle_mode = true
+alignment = 0
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_0vqpf")
+text = "Reference lap"
+
+[node name="remove_button" type="Button" parent="." unique_id=628317094]
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(1, 1, 1, 0.45)
+theme_override_colors/font_hover_color = Color(1, 0.4, 0.35, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_0vqpf")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_0vqpf")
+text = "×"
+tooltip_text = "Remove"

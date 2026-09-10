@@ -1,0 +1,241 @@
+[gd_scene format=3 uid="uid://dhj1n34mxhbl5"]
+
+[ext_resource type="Script" uid="uid://3qcvpfid48tc" path="res://main_menu.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://chart_pane.tscn" id="2_chartpane"]
+[ext_resource type="Theme" path="res://ui_theme.tres" id="3_theme"]
+[ext_resource type="StyleBox" path="res://modal_card_style.tres" id="4_modalcard"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_appbg"]
+bg_color = Color(0.11, 0.11, 0.13, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar_card"]
+content_margin_left = 14.0
+content_margin_top = 14.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+bg_color = Color(0.135, 0.135, 0.16, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="MainMenu" type="Control" unique_id=588902938]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("1_script")
+
+[node name="app_bg" type="Panel" parent="." unique_id=588902939]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_appbg")
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=275655218]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="left_sidebar" type="PanelContainer" parent="HBoxContainer2" unique_id=1336357220]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_sidebar_card")
+
+[node name="sidebar_content" type="VBoxContainer" parent="HBoxContainer2/left_sidebar" unique_id=1336357221]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="tab_label" type="Label" parent="HBoxContainer2/left_sidebar/sidebar_content" unique_id=356891447]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.87, 0.33, 0.24, 1)
+theme_override_font_sizes/font_size = 13
+text = "Drivers"
+horizontal_alignment = 1
+
+[node name="TabContainer" type="TabContainer" parent="HBoxContainer2/left_sidebar/sidebar_content" unique_id=2136746262]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+tabs_position = 1
+tabs_visible = false
+use_hidden_tabs_for_min_size = true
+
+[node name="selected_driver_lap" type="TabBar" parent="HBoxContainer2/left_sidebar/sidebar_content/TabContainer" unique_id=1263901153]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="telemetry_data_selection" type="TabBar" parent="HBoxContainer2/left_sidebar/sidebar_content/TabContainer" unique_id=1336119536]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="telemetry_data_items" type="Tree" parent="HBoxContainer2/left_sidebar/sidebar_content/TabContainer/telemetry_data_selection" unique_id=1866469424]
+layout_mode = 0
+offset_right = 16.0
+offset_bottom = 17.0
+
+[node name="tab_nav" type="HBoxContainer" parent="HBoxContainer2/left_sidebar/sidebar_content" unique_id=693481027]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="prev_tab" type="Button" parent="HBoxContainer2/left_sidebar/sidebar_content/tab_nav" unique_id=104772835]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "<"
+
+[node name="next_tab" type="Button" parent="HBoxContainer2/left_sidebar/sidebar_content/tab_nav" unique_id=558396210]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+text = ">"
+
+[node name="main_content" type="VBoxContainer" parent="HBoxContainer2" unique_id=482941808]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="top_menu" type="HBoxContainer" parent="HBoxContainer2/main_content" unique_id=2032804789]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="open_add_dialog_btn" type="Button" parent="HBoxContainer2/main_content/top_menu"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+  Add Driver / Lap"
+
+[node name="add_driver_dialog" type="Window" parent="HBoxContainer2/main_content/top_menu"]
+title = "Add Driver / Lap"
+size = Vector2i(440, 500)
+min_size = Vector2i(360, 420)
+unresizable = false
+transient = true
+exclusive = false
+theme = ExtResource("3_theme")
+visible = false
+
+[node name="modal_card" type="PanelContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("4_modalcard")
+
+[node name="margin" type="MarginContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="vbox" type="VBoxContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="game_toggle" type="Button" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+layout_mode = 2
+alignment = 0
+text = "Game: (choose)  ▾"
+
+[node name="game_scroll" type="ScrollContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+visible = false
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+
+[node name="game_list" type="VBoxContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox/game_scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="track_toggle" type="Button" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+layout_mode = 2
+alignment = 0
+text = "Track: (choose)  ▾"
+
+[node name="track_scroll" type="ScrollContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+visible = false
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+
+[node name="track_list" type="VBoxContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox/track_scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="driver_lap_label" type="Label" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+visible = false
+layout_mode = 2
+text = "Driver / Lap"
+
+[node name="search_box" type="LineEdit" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+visible = false
+layout_mode = 2
+placeholder_text = "Search driver..."
+clear_button_enabled = true
+
+[node name="results_scroll" type="ScrollContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+visible = false
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_vertical = 0
+horizontal_scroll_mode = 0
+
+[node name="results_list" type="VBoxContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox/results_scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="selected_label" type="Label" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+layout_mode = 2
+modulate = Color(1, 1, 1, 0.6)
+autowrap_mode = 2
+text = "No driver/lap selected"
+
+[node name="footer" type="HBoxContainer" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 6
+
+[node name="close_btn" type="Button" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox/footer"]
+layout_mode = 2
+text = "Close"
+
+[node name="add_btn" type="Button" parent="HBoxContainer2/main_content/top_menu/add_driver_dialog/modal_card/margin/vbox/footer"]
+layout_mode = 2
+disabled = true
+text = "Add"
+
+[node name="plot_area" type="HBoxContainer" parent="HBoxContainer2/main_content" unique_id=177371091]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="chart_workspace" type="Control" parent="HBoxContainer2/main_content/plot_area" unique_id=812734650]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ChartPane" parent="HBoxContainer2/main_content/plot_area/chart_workspace" unique_id=424839319 instance=ExtResource("2_chartpane")]
+layout_mode = 1
+offset_top = -8.0

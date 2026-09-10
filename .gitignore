@@ -1,0 +1,20 @@
+# --- engine (Go) ---
+engine/.env
+engine/dist/
+engine/trace.out
+engine/*.exe
+engine/*.test
+# Bundled Postgres binaries (~100MB) — CI fetches these fresh on each build
+# rather than tracking them in git; see engine/assets/pgbin-windows-amd64.
+engine/assets/pgbin-windows-amd64/
+
+# --- client (Godot) ---
+client/.godot/
+client/dist/
+client/android/
+client/**/*.import
+
+# --- tooling ---
+.claude/
+.DS_Store
+Thumbs.db

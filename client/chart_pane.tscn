@@ -1,0 +1,184 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://chart_pane.gd" id="1_script"]
+[ext_resource type="Script" path="res://chart_canvas.gd" id="2_canvas"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.135, 0.135, 0.16, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cursor"]
+bg_color = Color(0, 0, 0, 0.65)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+
+[node name="ChartPane" type="Control" unique_id=847213095]
+clip_contents = true
+custom_minimum_size = Vector2(150, 100)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="content" type="Control" parent="."]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="canvas_bg" type="Panel" parent="content" unique_id=192048573]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="canvas" type="Control" parent="content" unique_id=630917452]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_canvas")
+
+[node name="lines_root" type="Control" parent="content/canvas" unique_id=630917460]
+clip_contents = true
+layout_mode = 0
+mouse_filter = 2
+
+[node name="y_axis_divider" type="ColorRect" parent="content/canvas" unique_id=630917456]
+mouse_filter = 2
+layout_mode = 1
+anchor_bottom = 1.0
+offset_left = 44.0
+offset_top = 16.0
+offset_right = 45.0
+offset_bottom = -20.0
+grow_vertical = 2
+color = Color(1, 1, 1, 0.12)
+
+[node name="placeholder_label" type="Label" parent="content/canvas" unique_id=630917453]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Chart Area
+(drag a data type here)"
+autowrap_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 1, 1, 0.35)
+
+[node name="x_ticks" type="Control" parent="content/canvas" unique_id=630917454]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="y_ticks" type="Control" parent="content/canvas" unique_id=630917455]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="cursor_line" type="Line2D" parent="content/canvas" unique_id=630917457]
+visible = false
+width = 1.0
+default_color = Color(1, 1, 1, 0.5)
+
+[node name="cursor_readout" type="PanelContainer" parent="content/canvas" unique_id=630917458]
+mouse_filter = 2
+visible = false
+theme_override_styles/panel = SubResource("StyleBoxFlat_cursor")
+
+[node name="cursor_readout_list" type="VBoxContainer" parent="content/canvas/cursor_readout" unique_id=630917459]
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="legend_stack" type="VBoxContainer" parent="content" unique_id=563041827]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -148.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = 12.0
+grow_horizontal = 0
+theme_override_constants/separation = 4
+
+[node name="toolbar" type="HBoxContainer" parent="." unique_id=471029384]
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -28.0
+offset_right = -10.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 4
+
+[node name="split_h" type="Button" parent="toolbar" unique_id=738201956]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+text = "⬌"
+tooltip_text = "Split horizontally"
+
+[node name="split_v" type="Button" parent="toolbar" unique_id=915382047]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+text = "⬍"
+tooltip_text = "Split vertically"
+
+[node name="close_btn" type="Button" parent="toolbar" unique_id=284719560]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+text = "×"
+tooltip_text = "Close this pane"
+
+[node name="reset_view_btn" type="Button" parent="toolbar" unique_id=284719564]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+text = "⟲"
+tooltip_text = "Reset zoom/pan — fit all data back to view"
+
+[node name="x_sep" type="VSeparator" parent="toolbar" unique_id=284719561]
+layout_mode = 2
+
+[node name="x_mode_switch" type="Button" parent="toolbar" unique_id=284719562]
+custom_minimum_size = Vector2(40, 24)
+layout_mode = 2
+toggle_mode = true
+text = "Dist"
+tooltip_text = "X axis: click to switch between lap distance and elapsed time"

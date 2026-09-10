@@ -1,0 +1,16 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: telemetry_timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: telemetry
+      POSTGRES_PASSWORD: telemetry
+      POSTGRES_DB: telemetry
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  timescaledb_data:
