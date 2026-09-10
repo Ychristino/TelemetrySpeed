@@ -111,10 +111,20 @@ func download_and_install() -> void:
 # anyway with no installer running and nothing to show for it — exactly what
 # an update that "does nothing" looks like. Retry a few times before giving
 # up, and only quit once the installer actually launched.
+#
+# Deliberately just get_tree().quit() here, NOT EngineProcess's graceful
+# shutdown_and_quit() — confirmed by testing side by side that the
+# installer's CloseApplications (Inno Setup's Restart Manager integration)
+# reliably force-closes engine.exe, every postgres.exe child, AND this GUI
+# process on its own, without our help. Having this process also try to
+# gracefully tear down engine.exe at the same moment RM is independently
+# trying to close everything in {app} raced with it and reliably hung the
+# installer partway through (Setup process alive but stuck, engine.exe never
+# actually closed, install never completed) — worse than doing nothing.
 func _launch_installer(path: String, attempt: int = 1) -> void:
 	var pid := OS.create_process(path, ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], false)
 	if pid > 0:
-		EngineProcess.shutdown_and_quit()
+		get_tree().quit()
 		return
 	if attempt >= 5:
 		check_failed.emit("could not launch installer after %d attempts" % attempt)
