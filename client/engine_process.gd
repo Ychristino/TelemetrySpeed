@@ -81,7 +81,7 @@ func _engine_exe_path() -> String:
 	if OS.has_feature("editor"):
 		# Dev convenience: running from the Godot editor, exe lives in the
 		# separate Go project's build output rather than next to Godot.
-		var dev_candidate := "C:/Users/ychri/Documents/TelemetryView/NewTelemtryEngine/dist/engine.exe"
+		var dev_candidate := "C:/Users/ychri/Documents/TelemetryApp/engine/dist/engine.exe"
 		if FileAccess.file_exists(dev_candidate):
 			return dev_candidate
 	return ""

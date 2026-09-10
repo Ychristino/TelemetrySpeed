@@ -90,6 +90,7 @@ var _api: TelemetryAPIClient
 # --- Top bar extras: Export/Import (stub), Select Lap (rename of the old
 # Add Driver/Lap button), and the Capture modal + its status dot ---
 var _capture_dot: Label
+var _capture_dot_label: Label
 var _capture_modal: Window
 var _capture_port_edit: LineEdit
 var _capture_play_btn: Button
@@ -279,12 +280,28 @@ func _build_topbar_extras() -> void:
 	_update_btn.pressed.connect(_on_update_btn_pressed)
 	_top_menu.add_child(_update_btn)
 
+	var dot_box := VBoxContainer.new()
+	dot_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	dot_box.add_theme_constant_override("separation", 0)
+
 	_capture_dot = Label.new()
 	_capture_dot.text = "●"
+	_capture_dot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_capture_dot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_capture_dot.add_theme_font_size_override("font_size", 16)
 	_capture_dot.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
 	_capture_dot.tooltip_text = "Telemetry capture stopped"
-	_top_menu.add_child(_capture_dot)
+	dot_box.add_child(_capture_dot)
+
+	_capture_dot_label = Label.new()
+	_capture_dot_label.text = "Not running"
+	_capture_dot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_capture_dot_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_capture_dot_label.add_theme_font_size_override("font_size", 9)
+	_capture_dot_label.modulate = Color(1, 1, 1, 0.35)
+	dot_box.add_child(_capture_dot_label)
+
+	_top_menu.add_child(dot_box)
 
 	var capture_btn := Button.new()
 	capture_btn.text = "Capture"
@@ -802,6 +819,7 @@ func _on_listener_status_changed(running: bool, port: int) -> void:
 		_capture_port_edit.text = str(port)
 	_capture_dot.add_theme_color_override("font_color", Color(1.0, 0.15, 0.15) if running else Color(0.4, 0.4, 0.4))
 	_capture_dot.tooltip_text = ("Capturing telemetry on UDP :%d" % port) if running else "Telemetry capture stopped"
+	_capture_dot_label.text = ("Running on: %d" % port) if running else "Not running"
 
 func _on_listener_error(message: String) -> void:
 	_capture_play_btn.disabled = false
