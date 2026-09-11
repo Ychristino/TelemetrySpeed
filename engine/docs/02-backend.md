@@ -78,7 +78,7 @@ internal/
       001_init.sql     full schema for fresh installs
       002_expand_telemetry.sql  idempotent column additions
   f1/
-    header.go          PacketHeader, packet ID constants, MaxCars
+    header.go          PacketHeader, packet ID constants
     packets.go         all F1 struct types (Payload interface)
   parser/
     parser.go          GameParser interface
@@ -89,7 +89,7 @@ internal/
   source/
     router.go          SourceRouter, SourceKey
     handler.go         SourceHandler — frame assembler + session lifecycle
-    frame.go           CarFrame, Frame, ToTelemetryRows()
+    frame.go           CarFrame, Frame, ToTelemetryRow()
   listener_udp/
     listener_udp.go    UDP socket, receive loop, buffer pool
     processor.go       parse() worker, calls parser.Dispatch()
@@ -160,12 +160,12 @@ receive packet with frameID = N
     elif frameID != curFrameID:
         finalize curFrame → writeCh
         start new frame (N)
-    merge packet fields into curFrame.Cars[i]
+    merge packet fields into curFrame.Car
 ```
 
 Finalization is triggered by the arrival of the *next* frame, not a timer. At 60 Hz there is at most ~16 ms of latency before finalization.
 
-`Frame.Cars` is `[MaxCars]CarFrame` where `MaxCars = 24`. F1 2025 parsers only fill indices 0–21; slots 22–23 remain zero-valued. `ToTelemetryRows()` skips any car with `ResultStatus ≤ ResultStatusInactive`, so the empty slots are never written.
+Per-car packets (Motion, LapData, CarTelemetry, CarStatus, CarDamage, Participants) carry data for every car on track, but the parser only decodes the slot at `hdr.PlayerCarIndex` — the rest of the grid is never parsed or stored. `Frame.Car` holds that one car's data, tagged with `Frame.CarIndex`. `ToTelemetryRow()` returns `ok = false` (nothing written) when `ResultStatus ≤ ResultStatusInactive` — e.g. still in the garage before the session goes live.
 
 ---
 
@@ -318,12 +318,11 @@ Every SourceHandler is a single goroutine with a `select` loop, so its `sessionS
 ## Write Volume
 
 ```
-F1 2026:  24 cars × 60 Hz = 1 440 rows/second (active racing)
-F1 2025:  up to 22 active cars × 60 Hz = 1 320 rows/second
+Player car only: 60 Hz = 60 rows/second (active racing)
 
-Bulk flush at 500 rows → every ~350–380 ms
-90-min race             → ~7–8 M telemetry rows
+Bulk flush at 500 rows → every ~8 s
+90-min race             → ~325 K telemetry rows
 TimescaleDB compression → typically 10–20× on repetitive float data
 ```
 
-Only active cars are flushed. `ResultStatus ≤ 1` (Invalid or Inactive) is skipped by `ToTelemetryRows()`.
+Only the player's active frames are flushed. `ResultStatus ≤ 1` (Invalid or Inactive) is skipped by `ToTelemetryRow()`.

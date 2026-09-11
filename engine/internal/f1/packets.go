@@ -44,11 +44,11 @@ const (
 	PitStatusPitting = 1
 	PitStatusInBox   = 2
 
-	DriverStatusGarage   = 0
+	DriverStatusGarage    = 0
 	DriverStatusFlyingLap = 1
-	DriverStatusInLap    = 2
-	DriverStatusOutLap   = 3
-	DriverStatusOnTrack  = 4
+	DriverStatusInLap     = 2
+	DriverStatusOutLap    = 3
+	DriverStatusOnTrack   = 4
 )
 
 type LapDataItem struct {
@@ -166,25 +166,25 @@ type CarDamageData struct {
 //	[196:212] rollAngles+chassisYaw+chassisPitch — skipped
 //	F1 26 only: [212:228] wheelCamber[4]
 type MotionExData struct {
-	SuspensionPos   [4]float32
-	SuspensionVel   [4]float32
-	SuspensionAccel [4]float32
-	WheelSpeed      [4]float32
-	WheelSlipRatio  [4]float32
-	WheelSlipAngle  [4]float32
-	WheelLatForce   [4]float32
-	WheelLongForce  [4]float32
-	WheelVertForce  [4]float32
-	LocalVelX       float32
-	LocalVelY       float32
-	LocalVelZ       float32
-	AngularVelX     float32
-	AngularVelY     float32
-	AngularVelZ     float32
+	SuspensionPos    [4]float32
+	SuspensionVel    [4]float32
+	SuspensionAccel  [4]float32
+	WheelSpeed       [4]float32
+	WheelSlipRatio   [4]float32
+	WheelSlipAngle   [4]float32
+	WheelLatForce    [4]float32
+	WheelLongForce   [4]float32
+	WheelVertForce   [4]float32
+	LocalVelX        float32
+	LocalVelY        float32
+	LocalVelZ        float32
+	AngularVelX      float32
+	AngularVelY      float32
+	AngularVelZ      float32
 	FrontWheelsAngle float32
-	FrontAeroHeight float32
-	RearAeroHeight  float32
-	WheelCamber     [4]float32 // F1 26 only; zero for F1 25
+	FrontAeroHeight  float32
+	RearAeroHeight   float32
+	WheelCamber      [4]float32 // F1 26 only; zero for F1 25
 }
 
 // SessionEvent is the payload for PacketID=3 (Event).
@@ -206,16 +206,18 @@ type ParticipantInfo struct {
 	RaceNumber uint8
 }
 
-// Payload type aliases — one per packet kind.
-type MotionPayload       [MaxCars]CarMotionData
-type LapPayload          [MaxCars]LapDataItem
-type TelemetryPayload    [MaxCars]CarTelemetryData
-type StatusPayload       [MaxCars]CarStatusData
-type DamagePayload       [MaxCars]CarDamageData
-type EventPayload        SessionEvent
-type SessionPayload      SessionInfo
-type ParticipantsPayload [MaxCars]ParticipantInfo
-type MotionExPayload     MotionExData
+// Payload type aliases — one per packet kind. Per-car packets carry data for
+// every car on track, but only the player's slot is decoded (see the parser
+// package), so these hold a single car's data rather than the full grid.
+type MotionPayload CarMotionData
+type LapPayload LapDataItem
+type TelemetryPayload CarTelemetryData
+type StatusPayload CarStatusData
+type DamagePayload CarDamageData
+type EventPayload SessionEvent
+type SessionPayload SessionInfo
+type ParticipantsPayload ParticipantInfo
+type MotionExPayload MotionExData
 
 func (MotionPayload) isPayload()       {}
 func (LapPayload) isPayload()          {}

@@ -4,7 +4,6 @@ import "encoding/binary"
 
 const (
 	HeaderSize = 29
-	MaxCars    = 24 // F1 26 expanded to 24; earlier games use 22 and leave slots 22-23 zero
 
 	PacketIDMotion       = 0
 	PacketIDSession      = 1

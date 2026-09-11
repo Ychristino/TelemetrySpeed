@@ -114,7 +114,7 @@ If the game uses a different packet header layout than F1, also update `ParseHea
 If the new game's packet types differ significantly from the existing F1 structs, add new types to `internal/f1/packets.go` implementing the `Payload` interface:
 
 ```go
-type MyGameMotionPayload [MaxCars]MyGameMotionData
+type MyGameMotionPayload MyGameMotionData
 func (MyGameMotionPayload) isPayload() {}
 ```
 
@@ -144,9 +144,9 @@ func init() {
 func (p myGameParser) Parse(data []byte, hdr f1.PacketHeader) (f1.Payload, bool) {
     switch hdr.PacketID {
     case f1.PacketIDMotion:
-        return parseMygameMotion(data)
+        return parseMygameMotion(data, hdr.PlayerCarIndex)
     case f1.PacketIDCarTelemetry:
-        return parseMygameTelemetry(data)
+        return parseMygameTelemetry(data, hdr.PlayerCarIndex)
     case f1.PacketIDEvent:
         return parseEvent(data) // shared helper if event format matches
     default:
@@ -154,21 +154,19 @@ func (p myGameParser) Parse(data []byte, hdr f1.PacketHeader) (f1.Payload, bool)
     }
 }
 
-func parseMygameMotion(data []byte) (f1.MotionPayload, bool) {
-    if len(data) < f1.HeaderSize+mygameNumCars*mygameMotionSize {
+// Per-car packets carry data for every car on track, but only the player's
+// slot is decoded — the engine doesn't track the rest of the grid.
+func parseMygameMotion(data []byte, playerIdx uint8) (f1.MotionPayload, bool) {
+    if int(playerIdx) >= mygameNumCars || len(data) < f1.HeaderSize+mygameNumCars*mygameMotionSize {
         return f1.MotionPayload{}, false
     }
-    var out f1.MotionPayload
-    for i := 0; i < mygameNumCars; i++ {
-        base := f1.HeaderSize + i*mygameMotionSize
-        c := newCursor(data[base : base+mygameMotionSize])
-        out[i] = f1.CarMotionData{
-            PosX: c.F32(),
-            PosY: c.F32(),
-            // ... read fields in spec order, c.Skip(n) over ones you don't need
-        }
-    }
-    return out, true
+    base := f1.HeaderSize + int(playerIdx)*mygameMotionSize
+    c := newCursor(data[base : base+mygameMotionSize])
+    return f1.MotionPayload{
+        PosX: c.F32(),
+        PosY: c.F32(),
+        // ... read fields in spec order, c.Skip(n) over ones you don't need
+    }, true
 }
 ```
 
@@ -198,9 +196,7 @@ If the new game introduces packet IDs that don't exist in F1 (and you added new 
 ```go
 case MyGameSpecialPayload:
     h.checkNewFrame(ctx, pkt.Header.FrameID)
-    for i, d := range p {
-        h.curFrame.Cars[i].SomeField = d.Value
-    }
+    h.curFrame.Car.SomeField = p.Value
 ```
 
 If the new game uses the same F1 payload types, `dispatch()` already handles them — nothing to change.
@@ -217,7 +213,7 @@ Adding a new field end-to-end touches six files. Work through them in order.
 - [ ] `internal/parser/f1_2025.go` and/or `f1_2026.go` — parse the byte offset
 - [ ] `internal/source/frame.go` — add field to `CarFrame`
 - [ ] `internal/source/handler.go` — merge field from payload into `curFrame`
-- [ ] `internal/source/frame.go` (`ToTelemetryRows`) — copy field to `TelemetryRow`
+- [ ] `internal/source/frame.go` (`ToTelemetryRow`) — copy field to `TelemetryRow`
 - [ ] `internal/database/writer.go` — add field to `TelemetryRow` struct, `telemetryCols` slice, and `bulkInsert` row slice
 - [ ] `internal/database/migrations/002_expand_telemetry.sql` — `ADD COLUMN IF NOT EXISTS`
 
@@ -241,11 +237,11 @@ tyresWear := c.F32x4()
 c.Skip(4) // [16:20] tyresDamage — unused
 brakesDamage := c.U8x4()
 c.Skip(6) // [24:30] tyreBlisters etc. — unused
-out[i] = f1.CarDamageData{
+return f1.DamagePayload{
     TyresWear:       tyresWear,
     BrakesDamage:    brakesDamage,
     WingDamageFront: c.U8(), // ← new, read where the spec places it
-}
+}, true
 ```
 
 Do the same in `f1_2026.go` — the field sits at whatever point in the read sequence its own spec places it, which may not be the same `Skip` count.
@@ -264,21 +260,19 @@ WingDamageFront  uint8  // ← new
 
 ```go
 case f1.DamagePayload:
-    for i, d := range p {
-        h.curFrame.Cars[i].TyresWear       = d.TyresWear
-        h.curFrame.Cars[i].BrakesDamage    = d.BrakesDamage
-        h.curFrame.Cars[i].TyreBlisters    = d.TyreBlisters
-        h.curFrame.Cars[i].WingDamageFront = d.WingDamageFront  // ← new
-    }
+    h.curFrame.Car.TyresWear       = p.TyresWear
+    h.curFrame.Car.BrakesDamage    = p.BrakesDamage
+    h.curFrame.Car.TyreBlisters    = p.TyreBlisters
+    h.curFrame.Car.WingDamageFront = p.WingDamageFront  // ← new
 ```
 
-**5. `internal/source/frame.go` — `ToTelemetryRows()`**
+**5. `internal/source/frame.go` — `ToTelemetryRow()`**
 
 ```go
-rows = append(rows, database.TelemetryRow{
+row := database.TelemetryRow{
     // ... existing fields ...
     WingDamageFront: int16(c.WingDamageFront),  // ← new
-})
+}
 ```
 
 **6. `internal/database/writer.go`**

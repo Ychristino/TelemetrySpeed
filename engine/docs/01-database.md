@@ -359,7 +359,7 @@ Lap and sector boundaries are applied as time-range predicates at query time usi
 Always derived: `EXTRACT(EPOCH FROM (ended_at - started_at)) * 1000`. Storing it would create redundancy and an update surface.
 
 **MotionEx columns are nullable**
-MotionEx (ID 13) only covers the player car. All other cars get NULL for those 56 columns. The backend sets `HasMotionEx = true` only on the player's `CarFrame`; the DB writer uses `optF()` to emit nil for rows where it is false.
+MotionEx (ID 13) is only ever sent by the game for the player's car, so those 56 columns can still be absent — e.g. before the first MotionEx packet arrives in a frame. The backend sets `HasMotionEx = true` once it has; the DB writer uses `optF()` to emit nil for rows where it hasn't.
 
 **`ON DELETE CASCADE` everywhere**
 Deleting a session removes all laps, sectors, and telemetry rows automatically.

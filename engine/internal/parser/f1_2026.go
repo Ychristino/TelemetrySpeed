@@ -21,15 +21,15 @@ func init() {
 func (p f1_2026Parser) Parse(data []byte, hdr f1.PacketHeader) (f1.Payload, bool) {
 	switch hdr.PacketID {
 	case f1.PacketIDMotion:
-		return parseMotion26(data)
+		return parseMotion26(data, hdr.PlayerCarIndex)
 	case f1.PacketIDLapData:
-		return parseLapData(data, numCars26)
+		return parseLapData(data, numCars26, hdr.PlayerCarIndex)
 	case f1.PacketIDCarTelemetry:
-		return parseCarTelemetry26(data)
+		return parseCarTelemetry26(data, hdr.PlayerCarIndex)
 	case f1.PacketIDCarStatus:
-		return parseCarStatus26(data)
+		return parseCarStatus26(data, hdr.PlayerCarIndex)
 	case f1.PacketIDCarDamage:
-		return parseCarDamage26(data)
+		return parseCarDamage26(data, hdr.PlayerCarIndex)
 	case f1.PacketIDMotionEx:
 		return parseMotionEx26(data)
 	case f1.PacketIDEvent:
@@ -43,115 +43,100 @@ func (p f1_2026Parser) Parse(data []byte, hdr f1.PacketHeader) (f1.Payload, bool
 	}
 }
 
-func parseMotion26(data []byte) (f1.MotionPayload, bool) {
-	if len(data) < f1.HeaderSize+numCars26*motionSize26 {
+func parseMotion26(data []byte, playerIdx uint8) (f1.MotionPayload, bool) {
+	if int(playerIdx) >= numCars26 || len(data) < f1.HeaderSize+numCars26*motionSize26 {
 		return f1.MotionPayload{}, false
 	}
-	var out f1.MotionPayload
-	for i := 0; i < numCars26; i++ {
-		base := f1.HeaderSize + i*motionSize26
-		c := newCursor(data[base : base+motionSize26])
-		out[i] = f1.CarMotionData{
-			PosX: c.F32(), PosY: c.F32(), PosZ: c.F32(),
-			VelX: c.F32(), VelY: c.F32(), VelZ: c.F32(),
-		}
-		c.Skip(12) // [24:36] direction vectors — unused
-		// F1 26 packs g-forces as int16/1000 instead of float32.
-		out[i].GLateral = float32(c.I16()) / 1000.0
-		out[i].GLong = float32(c.I16()) / 1000.0
-		out[i].GVert = float32(c.I16()) / 1000.0
-		out[i].Yaw = c.F32()
-		out[i].Pitch = c.F32()
-		out[i].Roll = c.F32()
+	base := f1.HeaderSize + int(playerIdx)*motionSize26
+	c := newCursor(data[base : base+motionSize26])
+	out := f1.MotionPayload{
+		PosX: c.F32(), PosY: c.F32(), PosZ: c.F32(),
+		VelX: c.F32(), VelY: c.F32(), VelZ: c.F32(),
 	}
+	c.Skip(12) // [24:36] direction vectors — unused
+	// F1 26 packs g-forces as int16/1000 instead of float32.
+	out.GLateral = float32(c.I16()) / 1000.0
+	out.GLong = float32(c.I16()) / 1000.0
+	out.GVert = float32(c.I16()) / 1000.0
+	out.Yaw = c.F32()
+	out.Pitch = c.F32()
+	out.Roll = c.F32()
 	return out, true
 }
 
-func parseCarTelemetry26(data []byte) (f1.TelemetryPayload, bool) {
-	if len(data) < f1.HeaderSize+numCars26*telemetrySize26 {
+func parseCarTelemetry26(data []byte, playerIdx uint8) (f1.TelemetryPayload, bool) {
+	if int(playerIdx) >= numCars26 || len(data) < f1.HeaderSize+numCars26*telemetrySize26 {
 		return f1.TelemetryPayload{}, false
 	}
-	var out f1.TelemetryPayload
-	for i := 0; i < numCars26; i++ {
-		base := f1.HeaderSize + i*telemetrySize26
-		c := newCursor(data[base : base+telemetrySize26])
-		speed := c.U16()
-		throttle := c.F32()
-		steer := c.F32()
-		brake := c.F32()
-		clutch := c.U8()
-		gear := c.I8()
-		rpm := c.U16()
-		drs := c.U8()
-		c.Skip(3) // [19:22] unused
-		brakesTemp := c.U16x4()
-		tyreSurfTemp := c.U8x4()
-		tyreInnerTemp := c.U8x4()
-		engTemp := uint16(c.U8()) // F1 26 narrows engTemp to a single byte
-		tyrePressure := c.F32x4()
-		out[i] = f1.CarTelemetryData{
-			Speed: speed, Throttle: throttle, Steer: steer, Brake: brake,
-			Clutch: clutch, Gear: gear, RPM: rpm, DRS: drs,
-			BrakesTemp: brakesTemp, TyreSurfTemp: tyreSurfTemp, TyreInnerTemp: tyreInnerTemp,
-			EngTemp: engTemp, TyrePressure: tyrePressure,
-		}
-	}
-	return out, true
+	base := f1.HeaderSize + int(playerIdx)*telemetrySize26
+	c := newCursor(data[base : base+telemetrySize26])
+	speed := c.U16()
+	throttle := c.F32()
+	steer := c.F32()
+	brake := c.F32()
+	clutch := c.U8()
+	gear := c.I8()
+	rpm := c.U16()
+	drs := c.U8()
+	c.Skip(3) // [19:22] unused
+	brakesTemp := c.U16x4()
+	tyreSurfTemp := c.U8x4()
+	tyreInnerTemp := c.U8x4()
+	engTemp := uint16(c.U8()) // F1 26 narrows engTemp to a single byte
+	tyrePressure := c.F32x4()
+	return f1.TelemetryPayload{
+		Speed: speed, Throttle: throttle, Steer: steer, Brake: brake,
+		Clutch: clutch, Gear: gear, RPM: rpm, DRS: drs,
+		BrakesTemp: brakesTemp, TyreSurfTemp: tyreSurfTemp, TyreInnerTemp: tyreInnerTemp,
+		EngTemp: engTemp, TyrePressure: tyrePressure,
+	}, true
 }
 
-func parseCarStatus26(data []byte) (f1.StatusPayload, bool) {
-	if len(data) < f1.HeaderSize+numCars26*statusSize26 {
+func parseCarStatus26(data []byte, playerIdx uint8) (f1.StatusPayload, bool) {
+	if int(playerIdx) >= numCars26 || len(data) < f1.HeaderSize+numCars26*statusSize26 {
 		return f1.StatusPayload{}, false
 	}
-	var out f1.StatusPayload
-	for i := 0; i < numCars26; i++ {
-		base := f1.HeaderSize + i*statusSize26
-		c := newCursor(data[base : base+statusSize26])
-		tractionControl := c.U8()
-		antiLockBrakes := c.U8()
-		fuelMix := c.U8()
-		c.Skip(1) // [3] unused
-		pitLimiter := c.U8()
-		fuelInTank := c.F32()
-		c.Skip(4) // [9:13] unused
-		fuelRemLaps := c.F32()
-		c.Skip(8) // [17:25] unused
-		tyreCompound := c.U8()
-		c.Skip(1) // [26] unused
-		tyreAgeLaps := c.U8()
-		c.Skip(1) // [28] unused
-		enginePowerICE := c.F32()
-		enginePowerMGUK := c.F32()
-		ersStore := c.F32()
-		ersDeployMode := c.U8()
-		out[i] = f1.CarStatusData{
-			TractionControl: tractionControl, AntiLockBrakes: antiLockBrakes, FuelMix: fuelMix,
-			PitLimiter: pitLimiter, FuelInTank: fuelInTank, FuelRemLaps: fuelRemLaps,
-			TyreCompound: tyreCompound, TyreAgeLaps: tyreAgeLaps,
-			EnginePowerICE: enginePowerICE, EnginePowerMGUK: enginePowerMGUK,
-			ERSStore: ersStore, ERSDeployMode: ersDeployMode,
-		}
-	}
-	return out, true
+	base := f1.HeaderSize + int(playerIdx)*statusSize26
+	c := newCursor(data[base : base+statusSize26])
+	tractionControl := c.U8()
+	antiLockBrakes := c.U8()
+	fuelMix := c.U8()
+	c.Skip(1) // [3] unused
+	pitLimiter := c.U8()
+	fuelInTank := c.F32()
+	c.Skip(4) // [9:13] unused
+	fuelRemLaps := c.F32()
+	c.Skip(8) // [17:25] unused
+	tyreCompound := c.U8()
+	c.Skip(1) // [26] unused
+	tyreAgeLaps := c.U8()
+	c.Skip(1) // [28] unused
+	enginePowerICE := c.F32()
+	enginePowerMGUK := c.F32()
+	ersStore := c.F32()
+	ersDeployMode := c.U8()
+	return f1.StatusPayload{
+		TractionControl: tractionControl, AntiLockBrakes: antiLockBrakes, FuelMix: fuelMix,
+		PitLimiter: pitLimiter, FuelInTank: fuelInTank, FuelRemLaps: fuelRemLaps,
+		TyreCompound: tyreCompound, TyreAgeLaps: tyreAgeLaps,
+		EnginePowerICE: enginePowerICE, EnginePowerMGUK: enginePowerMGUK,
+		ERSStore: ersStore, ERSDeployMode: ersDeployMode,
+	}, true
 }
 
-func parseCarDamage26(data []byte) (f1.DamagePayload, bool) {
-	if len(data) < f1.HeaderSize+numCars26*damageSize26 {
+func parseCarDamage26(data []byte, playerIdx uint8) (f1.DamagePayload, bool) {
+	if int(playerIdx) >= numCars26 || len(data) < f1.HeaderSize+numCars26*damageSize26 {
 		return f1.DamagePayload{}, false
 	}
-	var out f1.DamagePayload
-	for i := 0; i < numCars26; i++ {
-		base := f1.HeaderSize + i*damageSize26
-		c := newCursor(data[base : base+damageSize26])
-		tyresWear := c.F32x4()
-		c.Skip(4) // [16:20] tyresDamage — unused
-		out[i] = f1.CarDamageData{
-			TyresWear:    tyresWear,
-			BrakesDamage: c.U8x4(),
-			TyreBlisters: c.U8x4(),
-		}
-	}
-	return out, true
+	base := f1.HeaderSize + int(playerIdx)*damageSize26
+	c := newCursor(data[base : base+damageSize26])
+	tyresWear := c.F32x4()
+	c.Skip(4) // [16:20] tyresDamage — unused
+	return f1.DamagePayload{
+		TyresWear:    tyresWear,
+		BrakesDamage: c.U8x4(),
+		TyreBlisters: c.U8x4(),
+	}, true
 }
 
 func parseMotionEx26(data []byte) (f1.MotionExPayload, bool) {
@@ -186,28 +171,24 @@ func parseMotionEx26(data []byte) (f1.MotionExPayload, bool) {
 	return out, true
 }
 
-func parseParticipants26(data []byte, _ uint8) (f1.ParticipantsPayload, bool) {
-	if len(data) < f1.HeaderSize+1+numCars26*participantSize26 {
+func parseParticipants26(data []byte, playerIdx uint8) (f1.ParticipantsPayload, bool) {
+	if int(playerIdx) >= numCars26 || len(data) < f1.HeaderSize+1+numCars26*participantSize26 {
 		return f1.ParticipantsPayload{}, false
 	}
-	var out f1.ParticipantsPayload
-	for i := 0; i < numCars26; i++ {
-		base := f1.HeaderSize + 1 + i*participantSize26
-		c := newCursor(data[base : base+participantSize26])
-		c.Skip(1) // [0] aiControlled — unused
-		driverID := uint8(c.U16()) // F1 26 widens driverId to uint16
-		c.Skip(2) // [3:5] unused
-		teamID := uint8(c.U16()) // F1 26 widens teamId to uint16
-		c.Skip(1) // [7] unused
-		raceNumber := c.U8()
-		c.Skip(1) // [9] unused
-		name := c.NullTermStr(32)
-		out[i] = f1.ParticipantInfo{
-			Name:       name,
-			TeamID:     teamID,
-			DriverID:   driverID,
-			RaceNumber: raceNumber,
-		}
-	}
-	return out, true
+	base := f1.HeaderSize + 1 + int(playerIdx)*participantSize26
+	c := newCursor(data[base : base+participantSize26])
+	c.Skip(1)                  // [0] aiControlled — unused
+	driverID := uint8(c.U16()) // F1 26 widens driverId to uint16
+	c.Skip(2)                  // [3:5] unused
+	teamID := uint8(c.U16())   // F1 26 widens teamId to uint16
+	c.Skip(1)                  // [7] unused
+	raceNumber := c.U8()
+	c.Skip(1) // [9] unused
+	name := c.NullTermStr(32)
+	return f1.ParticipantsPayload{
+		Name:       name,
+		TeamID:     teamID,
+		DriverID:   driverID,
+		RaceNumber: raceNumber,
+	}, true
 }

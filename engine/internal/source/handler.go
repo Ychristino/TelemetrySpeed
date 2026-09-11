@@ -21,16 +21,16 @@ type sessionState struct {
 	playerCarIdx uint8
 	game         string
 
-	// Per-car lap tracking (all cars, not just the player) — used to detect
-	// each car's lap rollover and record its finishing lap_time_ms into the
-	// lap_times table. Indexed by car_index; zero-valued until first seen.
-	carLapNum     [f1.MaxCars]uint8
-	carLapTimeMS  [f1.MaxCars]uint32
-	carLapInvalid [f1.MaxCars]uint8
-	// carSector: last-seen sector (0/1/2) for each car, cached the same way as
+	// Lap-time rollover tracking for the player's car — used to detect a
+	// finish-line crossing and record the finishing lap_time_ms into the
+	// lap_times table. Zero-valued until first seen.
+	carLapNum     uint8
+	carLapTimeMS  uint32
+	carLapInvalid uint8
+	// carSector: last-seen sector (0/1/2), cached the same way as
 	// carLapTimeMS — used by recordLapTimes to tell a genuine finish-line
 	// crossing from a lap-number bump that never reached the final sector.
-	carSector [f1.MaxCars]uint8
+	carSector uint8
 }
 
 // SourceHandler is a single goroutine that owns all session and frame state
@@ -105,20 +105,18 @@ func (h *SourceHandler) dispatch(ctx context.Context, pkt *ParsedPacket) {
 			return
 		}
 		h.checkNewFrame(ctx, pkt.Header.FrameID)
-		for i, d := range p {
-			h.curFrame.Cars[i].PosX = d.PosX
-			h.curFrame.Cars[i].PosY = d.PosY
-			h.curFrame.Cars[i].PosZ = d.PosZ
-			h.curFrame.Cars[i].VelX = d.VelX
-			h.curFrame.Cars[i].VelY = d.VelY
-			h.curFrame.Cars[i].VelZ = d.VelZ
-			h.curFrame.Cars[i].GLateral = d.GLateral
-			h.curFrame.Cars[i].GLong = d.GLong
-			h.curFrame.Cars[i].GVert = d.GVert
-			h.curFrame.Cars[i].Yaw = d.Yaw
-			h.curFrame.Cars[i].Pitch = d.Pitch
-			h.curFrame.Cars[i].Roll = d.Roll
-		}
+		h.curFrame.Car.PosX = p.PosX
+		h.curFrame.Car.PosY = p.PosY
+		h.curFrame.Car.PosZ = p.PosZ
+		h.curFrame.Car.VelX = p.VelX
+		h.curFrame.Car.VelY = p.VelY
+		h.curFrame.Car.VelZ = p.VelZ
+		h.curFrame.Car.GLateral = p.GLateral
+		h.curFrame.Car.GLong = p.GLong
+		h.curFrame.Car.GVert = p.GVert
+		h.curFrame.Car.Yaw = p.Yaw
+		h.curFrame.Car.Pitch = p.Pitch
+		h.curFrame.Car.Roll = p.Roll
 	case f1.LapPayload:
 		h.handleLapData(ctx, p, pkt.Header.FrameID)
 	case f1.TelemetryPayload:
@@ -127,79 +125,72 @@ func (h *SourceHandler) dispatch(ctx context.Context, pkt *ParsedPacket) {
 			return
 		}
 		h.checkNewFrame(ctx, pkt.Header.FrameID)
-		for i, d := range p {
-			h.curFrame.Cars[i].Speed = d.Speed
-			h.curFrame.Cars[i].Throttle = d.Throttle
-			h.curFrame.Cars[i].Steer = d.Steer
-			h.curFrame.Cars[i].Brake = d.Brake
-			h.curFrame.Cars[i].Clutch = d.Clutch
-			h.curFrame.Cars[i].Gear = d.Gear
-			h.curFrame.Cars[i].RPM = d.RPM
-			h.curFrame.Cars[i].DRS = d.DRS
-			h.curFrame.Cars[i].BrakesTemp = d.BrakesTemp
-			h.curFrame.Cars[i].TyreSurfTemp = d.TyreSurfTemp
-			h.curFrame.Cars[i].TyreInnerTemp = d.TyreInnerTemp
-			h.curFrame.Cars[i].EngTemp = d.EngTemp
-			h.curFrame.Cars[i].TyrePressure = d.TyrePressure
-		}
+		h.curFrame.Car.Speed = p.Speed
+		h.curFrame.Car.Throttle = p.Throttle
+		h.curFrame.Car.Steer = p.Steer
+		h.curFrame.Car.Brake = p.Brake
+		h.curFrame.Car.Clutch = p.Clutch
+		h.curFrame.Car.Gear = p.Gear
+		h.curFrame.Car.RPM = p.RPM
+		h.curFrame.Car.DRS = p.DRS
+		h.curFrame.Car.BrakesTemp = p.BrakesTemp
+		h.curFrame.Car.TyreSurfTemp = p.TyreSurfTemp
+		h.curFrame.Car.TyreInnerTemp = p.TyreInnerTemp
+		h.curFrame.Car.EngTemp = p.EngTemp
+		h.curFrame.Car.TyrePressure = p.TyrePressure
 	case f1.StatusPayload:
 		if h.session == nil {
 			h.logDropped()
 			return
 		}
 		h.checkNewFrame(ctx, pkt.Header.FrameID)
-		for i, d := range p {
-			h.curFrame.Cars[i].TractionControl = d.TractionControl
-			h.curFrame.Cars[i].AntiLockBrakes = d.AntiLockBrakes
-			h.curFrame.Cars[i].FuelMix = d.FuelMix
-			h.curFrame.Cars[i].PitLimiter = d.PitLimiter
-			h.curFrame.Cars[i].FuelInTank = d.FuelInTank
-			h.curFrame.Cars[i].FuelRemLaps = d.FuelRemLaps
-			h.curFrame.Cars[i].TyreCompound = d.TyreCompound
-			h.curFrame.Cars[i].TyreAgeLaps = d.TyreAgeLaps
-			h.curFrame.Cars[i].EnginePowerICE = d.EnginePowerICE
-			h.curFrame.Cars[i].EnginePowerMGUK = d.EnginePowerMGUK
-			h.curFrame.Cars[i].ERSStore = d.ERSStore
-			h.curFrame.Cars[i].ERSDeployMode = d.ERSDeployMode
-		}
+		h.curFrame.Car.TractionControl = p.TractionControl
+		h.curFrame.Car.AntiLockBrakes = p.AntiLockBrakes
+		h.curFrame.Car.FuelMix = p.FuelMix
+		h.curFrame.Car.PitLimiter = p.PitLimiter
+		h.curFrame.Car.FuelInTank = p.FuelInTank
+		h.curFrame.Car.FuelRemLaps = p.FuelRemLaps
+		h.curFrame.Car.TyreCompound = p.TyreCompound
+		h.curFrame.Car.TyreAgeLaps = p.TyreAgeLaps
+		h.curFrame.Car.EnginePowerICE = p.EnginePowerICE
+		h.curFrame.Car.EnginePowerMGUK = p.EnginePowerMGUK
+		h.curFrame.Car.ERSStore = p.ERSStore
+		h.curFrame.Car.ERSDeployMode = p.ERSDeployMode
 	case f1.DamagePayload:
 		if h.session == nil {
 			h.logDropped()
 			return
 		}
 		h.checkNewFrame(ctx, pkt.Header.FrameID)
-		for i, d := range p {
-			h.curFrame.Cars[i].TyresWear = d.TyresWear
-			h.curFrame.Cars[i].BrakesDamage = d.BrakesDamage
-			h.curFrame.Cars[i].TyreBlisters = d.TyreBlisters
-		}
+		h.curFrame.Car.TyresWear = p.TyresWear
+		h.curFrame.Car.BrakesDamage = p.BrakesDamage
+		h.curFrame.Car.TyreBlisters = p.TyreBlisters
 	case f1.MotionExPayload:
 		if h.session == nil {
 			h.logDropped()
 			return
 		}
 		h.checkNewFrame(ctx, pkt.Header.FrameID)
-		idx := pkt.Header.PlayerCarIndex
-		h.curFrame.Cars[idx].HasMotionEx = true
-		h.curFrame.Cars[idx].SuspensionPos = p.SuspensionPos
-		h.curFrame.Cars[idx].SuspensionVel = p.SuspensionVel
-		h.curFrame.Cars[idx].SuspensionAccel = p.SuspensionAccel
-		h.curFrame.Cars[idx].WheelSpeed = p.WheelSpeed
-		h.curFrame.Cars[idx].WheelSlipRatio = p.WheelSlipRatio
-		h.curFrame.Cars[idx].WheelSlipAngle = p.WheelSlipAngle
-		h.curFrame.Cars[idx].WheelLatForce = p.WheelLatForce
-		h.curFrame.Cars[idx].WheelLongForce = p.WheelLongForce
-		h.curFrame.Cars[idx].WheelVertForce = p.WheelVertForce
-		h.curFrame.Cars[idx].LocalVelX = p.LocalVelX
-		h.curFrame.Cars[idx].LocalVelY = p.LocalVelY
-		h.curFrame.Cars[idx].LocalVelZ = p.LocalVelZ
-		h.curFrame.Cars[idx].AngularVelX = p.AngularVelX
-		h.curFrame.Cars[idx].AngularVelY = p.AngularVelY
-		h.curFrame.Cars[idx].AngularVelZ = p.AngularVelZ
-		h.curFrame.Cars[idx].FrontWheelsAngle = p.FrontWheelsAngle
-		h.curFrame.Cars[idx].FrontAeroHeight = p.FrontAeroHeight
-		h.curFrame.Cars[idx].RearAeroHeight = p.RearAeroHeight
-		h.curFrame.Cars[idx].WheelCamber = p.WheelCamber
+		h.curFrame.Car.HasMotionEx = true
+		h.curFrame.Car.SuspensionPos = p.SuspensionPos
+		h.curFrame.Car.SuspensionVel = p.SuspensionVel
+		h.curFrame.Car.SuspensionAccel = p.SuspensionAccel
+		h.curFrame.Car.WheelSpeed = p.WheelSpeed
+		h.curFrame.Car.WheelSlipRatio = p.WheelSlipRatio
+		h.curFrame.Car.WheelSlipAngle = p.WheelSlipAngle
+		h.curFrame.Car.WheelLatForce = p.WheelLatForce
+		h.curFrame.Car.WheelLongForce = p.WheelLongForce
+		h.curFrame.Car.WheelVertForce = p.WheelVertForce
+		h.curFrame.Car.LocalVelX = p.LocalVelX
+		h.curFrame.Car.LocalVelY = p.LocalVelY
+		h.curFrame.Car.LocalVelZ = p.LocalVelZ
+		h.curFrame.Car.AngularVelX = p.AngularVelX
+		h.curFrame.Car.AngularVelY = p.AngularVelY
+		h.curFrame.Car.AngularVelZ = p.AngularVelZ
+		h.curFrame.Car.FrontWheelsAngle = p.FrontWheelsAngle
+		h.curFrame.Car.FrontAeroHeight = p.FrontAeroHeight
+		h.curFrame.Car.RearAeroHeight = p.RearAeroHeight
+		h.curFrame.Car.WheelCamber = p.WheelCamber
 	}
 }
 
@@ -252,29 +243,22 @@ func (h *SourceHandler) handleSession(ctx context.Context, s f1.SessionPayload) 
 }
 
 func (h *SourceHandler) handleParticipants(ctx context.Context, p f1.ParticipantsPayload) {
-	if h.session == nil {
+	if h.session == nil || p.Name == "" {
 		return
 	}
-	entries := make([]database.ParticipantEntry, 0, len(p))
-	for i, info := range p {
-		if info.Name == "" {
-			continue
-		}
-		entries = append(entries, database.ParticipantEntry{
-			CarIndex:   int16(i),
-			Name:       info.Name,
-			Team:       teamName(info.TeamID),
-			RaceNumber: int16(info.RaceNumber),
-		})
-	}
+	entries := []database.ParticipantEntry{{
+		CarIndex:   int16(h.session.playerCarIdx),
+		Name:       p.Name,
+		Team:       teamName(p.TeamID),
+		RaceNumber: int16(p.RaceNumber),
+	}}
 	if err := h.sw.UpsertParticipants(ctx, h.session.sessionID, entries); err != nil {
 		log.Printf("[Handler %s] upsert participants: %v", h.key, err)
 	}
 }
 
 func (h *SourceHandler) handleLapData(ctx context.Context, lap f1.LapPayload, frameID uint32) {
-	playerIdx := h.lastHeader.PlayerCarIndex
-	player := lap[playerIdx]
+	player := f1.LapDataItem(lap)
 
 	// No active session — watch for a lap boundary to auto-create one.
 	// We wait for a clean lap start rather than joining mid-lap so that
@@ -294,21 +278,19 @@ func (h *SourceHandler) handleLapData(ctx context.Context, lap f1.LapPayload, fr
 
 	h.checkNewFrame(ctx, frameID)
 
-	// Merge lap data into current frame for all cars.
-	for i, d := range lap {
-		h.curFrame.Cars[i].CurrentLapTimeMS = d.CurrentLapTimeMS
-		h.curFrame.Cars[i].LapDistance = d.LapDistance
-		h.curFrame.Cars[i].CarPosition = d.CarPosition
-		h.curFrame.Cars[i].CurrentLapNum = d.CurrentLapNum
-		h.curFrame.Cars[i].Sector = d.Sector
-		h.curFrame.Cars[i].PitStatus = d.PitStatus
-		h.curFrame.Cars[i].LapInvalid = d.LapInvalid
-		h.curFrame.Cars[i].Penalties = d.Penalties
-		h.curFrame.Cars[i].DriverStatus = d.DriverStatus
-		h.curFrame.Cars[i].ResultStatus = d.ResultStatus
-	}
+	// Merge lap data into the current frame.
+	h.curFrame.Car.CurrentLapTimeMS = player.CurrentLapTimeMS
+	h.curFrame.Car.LapDistance = player.LapDistance
+	h.curFrame.Car.CarPosition = player.CarPosition
+	h.curFrame.Car.CurrentLapNum = player.CurrentLapNum
+	h.curFrame.Car.Sector = player.Sector
+	h.curFrame.Car.PitStatus = player.PitStatus
+	h.curFrame.Car.LapInvalid = player.LapInvalid
+	h.curFrame.Car.Penalties = player.Penalties
+	h.curFrame.Car.DriverStatus = player.DriverStatus
+	h.curFrame.Car.ResultStatus = player.ResultStatus
 
-	h.recordLapTimes(ctx, lap)
+	h.recordLapTimes(ctx, player)
 
 	now := time.Now()
 
@@ -366,11 +348,11 @@ func (h *SourceHandler) handleLapData(ctx context.Context, lap f1.LapPayload, fr
 	}
 }
 
-// recordLapTimes detects each car's lap rollover — independent of the
-// player-only lap/sector tracking above — and persists the finishing
+// recordLapTimes detects the player's lap rollover — independent of the
+// lap/sector open/close tracking above — and persists the finishing
 // lap_time_ms for whichever lap just completed. CurrentLapTimeMS resets to
 // ~0 in the same packet CurrentLapNum increments, so the finishing time is
-// the value captured on the *previous* call (h.session.carLapTimeMS[i]),
+// the value captured on the *previous* call (h.session.carLapTimeMS),
 // read here before it gets overwritten with the new lap's in-progress time.
 //
 // The game's lap-number counter also advances on things that aren't a real
@@ -380,29 +362,28 @@ func (h *SourceHandler) handleLapData(ctx context.Context, lap f1.LapPayload, fr
 // the final sector (index 2) on the last frame before the counter moved, so
 // anything short of that gets forced invalid here regardless of the game's
 // own flag.
-func (h *SourceHandler) recordLapTimes(ctx context.Context, lap f1.LapPayload) {
-	for i, d := range lap {
-		if d.ResultStatus <= f1.ResultStatusInactive {
-			continue
-		}
-		prevLapNum := h.session.carLapNum[i]
-		if prevLapNum > 0 && d.CurrentLapNum > prevLapNum {
-			finishedTimeMS := h.session.carLapTimeMS[i]
-			if finishedTimeMS > 0 {
-				lapInvalid := h.session.carLapInvalid[i]
-				if h.session.carSector[i] < 2 {
-					lapInvalid = 1
-				}
-				if err := h.sw.RecordLapTime(ctx, h.session.sessionID, int16(i), int(prevLapNum), int32(finishedTimeMS), lapInvalid); err != nil {
-					log.Printf("[Handler %s] record lap time car %d lap %d: %v", h.key, i, prevLapNum, err)
-				}
+func (h *SourceHandler) recordLapTimes(ctx context.Context, d f1.LapDataItem) {
+	if d.ResultStatus <= f1.ResultStatusInactive {
+		return
+	}
+	prevLapNum := h.session.carLapNum
+	if prevLapNum > 0 && d.CurrentLapNum > prevLapNum {
+		finishedTimeMS := h.session.carLapTimeMS
+		if finishedTimeMS > 0 {
+			lapInvalid := h.session.carLapInvalid
+			if h.session.carSector < 2 {
+				lapInvalid = 1
+			}
+			carIndex := int16(h.session.playerCarIdx)
+			if err := h.sw.RecordLapTime(ctx, h.session.sessionID, carIndex, int(prevLapNum), int32(finishedTimeMS), lapInvalid); err != nil {
+				log.Printf("[Handler %s] record lap time car %d lap %d: %v", h.key, carIndex, prevLapNum, err)
 			}
 		}
-		h.session.carLapNum[i] = d.CurrentLapNum
-		h.session.carLapTimeMS[i] = d.CurrentLapTimeMS
-		h.session.carLapInvalid[i] = d.LapInvalid
-		h.session.carSector[i] = d.Sector
 	}
+	h.session.carLapNum = d.CurrentLapNum
+	h.session.carLapTimeMS = d.CurrentLapTimeMS
+	h.session.carLapInvalid = d.LapInvalid
+	h.session.carSector = d.Sector
 }
 
 // autoCreateSession creates a DB session from a lap boundary detected mid-stream.
@@ -447,6 +428,7 @@ func (h *SourceHandler) checkNewFrame(ctx context.Context, frameID uint32) {
 			SessionID: h.session.sessionID,
 			FrameID:   frameID,
 			Timestamp: time.Now(),
+			CarIndex:  int16(h.session.playerCarIdx),
 		}
 		return
 	}
@@ -459,6 +441,7 @@ func (h *SourceHandler) checkNewFrame(ctx context.Context, frameID uint32) {
 		SessionID: h.session.sessionID,
 		FrameID:   frameID,
 		Timestamp: time.Now(),
+		CarIndex:  int16(h.session.playerCarIdx),
 	}
 }
 
@@ -466,10 +449,9 @@ func (h *SourceHandler) finalizeFrame(ctx context.Context) {
 	if h.session == nil || h.curFrameID == 0 {
 		return
 	}
-	rows := h.curFrame.ToTelemetryRows()
-	if len(rows) > 0 {
+	if row, ok := h.curFrame.ToTelemetryRow(); ok {
 		select {
-		case h.writeCh <- rows:
+		case h.writeCh <- []database.TelemetryRow{row}:
 		default:
 			log.Printf("[Handler %s] writeCh full, dropping frame %d", h.key, h.curFrameID)
 		}
