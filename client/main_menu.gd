@@ -294,7 +294,7 @@ func _build_topbar_extras() -> void:
 	dot_box.add_child(_capture_dot)
 
 	_capture_dot_label = Label.new()
-	_capture_dot_label.text = "Not running"
+	_capture_dot_label.text = "Offline"
 	_capture_dot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_capture_dot_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_capture_dot_label.add_theme_font_size_override("font_size", 9)
@@ -846,7 +846,7 @@ func _on_listener_status_changed(running: bool, port: int) -> void:
 		_capture_port_edit.text = str(port)
 	_capture_dot.add_theme_color_override("font_color", Color(1.0, 0.15, 0.15) if running else Color(0.4, 0.4, 0.4))
 	_capture_dot.tooltip_text = ("Capturing telemetry on UDP :%d" % port) if running else "Telemetry capture stopped"
-	_capture_dot_label.text = ("Running on: %d" % port) if running else "Not running"
+	_capture_dot_label.text = ("Running on: %d" % port) if running else "Offline"
 
 func _on_listener_error(message: String) -> void:
 	_capture_play_btn.disabled = false
