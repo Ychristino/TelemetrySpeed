@@ -10,6 +10,15 @@ extends Node
 # Inno Setup's CloseApplications setting handles closing this process during
 # install, and the installer itself IS the update mechanism we already have
 # for fresh installs, so there's only one packaging path to maintain.
+#
+# Before launching the installer we gracefully stop engine.exe (and the
+# Postgres it owns) ourselves via EngineProcess.prepare_for_installer() and
+# wait for it to actually exit, rather than leaving that entirely to Inno's
+# silent CloseApplications step. Postgres can take a moment to shut down
+# cleanly, and under /VERYSILENT + /SUPPRESSMSGBOXES a file Inno can't close
+# in time is just silently skipped — no error, the update "succeeds" but
+# leaves the old exe in place. Doing our own shutdown first and confirming it
+# finished means nothing is left locked by the time Setup.exe runs.
 
 signal update_available(version: String, download_url: String)
 signal check_failed(reason: String)
@@ -31,6 +40,27 @@ func _ready() -> void:
 	_http = HTTPRequest.new()
 	add_child(_http)
 	_http.request_completed.connect(_on_request_completed)
+
+	_cleanup_old_installers()
+
+# Downloaded installers (download_and_install() below) used to accumulate
+# forever in OS.get_cache_dir() — on Windows that's just %LOCALAPPDATA%, not
+# something the OS ever clears on its own — because nothing deleted them
+# after use. Sweep leftovers from past update cycles on every startup: by the
+# time a new instance of this app is running, any installer.exe from a prior
+# cycle already finished its job (it's literally what launched this instance
+# — see TelemetrySpeed.iss's postinstall Run step) and is safe to remove.
+func _cleanup_old_installers() -> void:
+	var dir := DirAccess.open(OS.get_cache_dir())
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.begins_with("TelemetrySpeedSetup-") and file_name.ends_with(".exe"):
+			dir.remove(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
 
 func check_now() -> void:
 	var err := _http.request(RELEASES_URL, ["Accept: application/vnd.github+json", "User-Agent: TelemetrySpeed-UpdateChecker"])
@@ -100,6 +130,10 @@ func download_and_install() -> void:
 		f.store_buffer(body)
 		f.close()
 		dl.queue_free()
+		# Sequential, not concurrent: fully stop engine.exe/Postgres and confirm
+		# they've exited before Setup.exe ever runs, so its own CloseApplications
+		# step finds nothing left to close. See EngineProcess.prepare_for_installer.
+		await EngineProcess.prepare_for_installer()
 		_launch_installer(path)
 	)
 	dl.request(_latest_download_url)
@@ -112,15 +146,18 @@ func download_and_install() -> void:
 # an update that "does nothing" looks like. Retry a few times before giving
 # up, and only quit once the installer actually launched.
 #
-# Deliberately just get_tree().quit() here, NOT EngineProcess's graceful
-# shutdown_and_quit() — confirmed by testing side by side that the
-# installer's CloseApplications (Inno Setup's Restart Manager integration)
-# reliably force-closes engine.exe, every postgres.exe child, AND this GUI
-# process on its own, without our help. Having this process also try to
-# gracefully tear down engine.exe at the same moment RM is independently
-# trying to close everything in {app} raced with it and reliably hung the
-# installer partway through (Setup process alive but stuck, engine.exe never
-# actually closed, install never completed) — worse than doing nothing.
+# Just get_tree().quit() here, not EngineProcess.shutdown_and_quit() — by
+# this point download_and_install() has already awaited
+# EngineProcess.prepare_for_installer(), so engine.exe/Postgres are already
+# confirmed gone; calling shutdown logic again here would be redundant.
+#
+# (An earlier version of this instead launched Setup.exe immediately and
+# relied on Inno's Restart Manager (CloseApplications) to independently close
+# engine.exe/Postgres at the same time this process was also trying to —
+# that race reliably hung the installer partway through: Setup process alive
+# but stuck, engine.exe never actually closed, install never completed. Doing
+# our own shutdown first, sequentially, before Setup.exe even starts avoids
+# that race entirely.)
 func _launch_installer(path: String, attempt: int = 1) -> void:
 	var pid := OS.create_process(path, ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], false)
 	if pid > 0:

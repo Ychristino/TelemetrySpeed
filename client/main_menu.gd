@@ -357,7 +357,7 @@ func _on_update_check_failed(reason: String) -> void:
 func _on_update_btn_pressed() -> void:
 	var confirm := ConfirmationDialog.new()
 	confirm.title = "Update Available"
-	confirm.dialog_text = "%s\n\nThe app will close, install the update, and you'll need to reopen it." % _update_btn.text.trim_prefix("⬆ ")
+	confirm.dialog_text = "%s\n\nThe app will close, install the update, and reopen automatically — just wait, no need to start it yourself." % _update_btn.text.trim_prefix("⬆ ")
 	confirm.confirmed.connect(func():
 		_update_btn.disabled = true
 		_update_btn.text = "Downloading update..."

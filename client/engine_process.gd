@@ -209,30 +209,49 @@ func _apply_listener_status(running: bool, port: int) -> void:
 # ----------------------------------------------------------------- shutdown
 
 func _begin_shutdown() -> void:
+	await _stop_engine_and_wait()
+	get_tree().quit()
+
+
+# Gracefully stops engine.exe (and the Postgres it owns) and waits for the
+# process to actually exit, WITHOUT quitting this app afterward. Shared by
+# shutdown_and_quit() above (which quits right after) and prepare_for_installer()
+# below, which hands off to the in-app auto-updater instead of quitting itself
+# — see update_checker.gd's download_and_install().
+func _stop_engine_and_wait() -> void:
 	if _overlay:
 		_overlay.show()
 		_overlay_retry_btn.hide()
 		_overlay_status.text = "Closing..."
 	if _pid <= 0 or not _engine_is_ready:
-		_finish_shutdown()
 		return
-	_shutdown_http.request_completed.connect(func(_r, _c, _h, _b): _wait_for_exit(), CONNECT_ONE_SHOT)
-	if _shutdown_http.request(base_url + "/shutdown", [], HTTPClient.METHOD_POST) != OK:
-		_wait_for_exit()
-
-
-func _wait_for_exit() -> void:
+	if _shutdown_http.request(base_url + "/shutdown", [], HTTPClient.METHOD_POST) == OK:
+		await _shutdown_http.request_completed
 	var elapsed := 0.0
 	while _pid > 0 and OS.is_process_running(_pid) and elapsed < 8.0:
 		await get_tree().create_timer(0.2).timeout
 		elapsed += 0.2
 	if _pid > 0 and OS.is_process_running(_pid):
 		OS.kill(_pid)
-	_finish_shutdown()
 
 
-func _finish_shutdown() -> void:
-	get_tree().quit()
+# Public entry point for the in-app auto-updater: gracefully stops engine.exe
+# and confirms it has fully exited, but does NOT quit this app — the caller
+# still needs to launch the installer, then quit only once that's underway.
+# Keeping this fully sequential (we stop everything ourselves and confirm
+# it's gone, THEN Setup.exe runs) is deliberate: an earlier version instead
+# launched Setup.exe first and relied on Inno's Restart Manager
+# (CloseApplications) to independently close engine.exe/Postgres at the same
+# moment this process was also trying to — that race reliably hung the
+# installer partway through (Setup process alive but stuck, engine.exe never
+# actually closed, install never completed). Doing it ourselves first, before
+# Setup.exe even starts, means its own CloseApplications step finds nothing
+# left to close.
+func prepare_for_installer() -> void:
+	if _shutting_down:
+		return
+	_shutting_down = true
+	await _stop_engine_and_wait()
 
 
 # ------------------------------------------------------------------ settings
